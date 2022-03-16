@@ -1,0 +1,196 @@
+---
+title: "HW6"
+author: "2019150445/Shin Baek Rok"
+date: '2020 12 17 '
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(ISLR)
+library(caret)
+library(boot)
+```
+
+# 1.
+a)
+
+```{r}
+head(Default)
+fit<-glm(default~income+balance,data=Default,family='binomial')
+fit
+```
+
+b)
+```{r}
+#i)
+test_index<-createDataPartition(Default$default,list=F)
+Default_test<-Default[test_index,]
+Default_train<-Default[-test_index,]
+
+#ii)
+fit_train<-glm(default~income+balance,data=Default_train,family='binomial')
+fit_train
+
+#iii)
+probs <- predict(fit_train, Default_test, type = "response")
+y_hat<-ifelse(probs>0.5,'Yes','No')
+mean(y_hat!=Default_test$default)
+```
+
+c)
+```{r}
+replicate(3,{
+  test_index<-createDataPartition(Default$default,list=F)
+  Default_test<-Default[test_index,]
+  Default_train<-Default[-test_index,]
+
+  fit_train<-glm(default~income+balance,data=Default_train,family='binomial')
+  probs <- predict(fit_train, Default_test, type = "response")
+  y_hat<-ifelse(probs>0.5,'Yes','No')
+  mean(y_hat!=Default_test$default)
+})
+```
+
+Since we split test and train set by random, the test error rate can be variable. But it is quite simmilar.
+
+d)
+```{r}
+test_index<-createDataPartition(Default$default,list=F)
+Default_test<-Default[test_index,]
+Default_train<-Default[-test_index,]
+
+fit_all<-glm(default~.,data=Default_train,family='binomial')
+probs<-predict(fit_all,Default_test,type='response')
+y_hat<-ifelse(probs>0.5,'Yes','No')
+mean(y_hat!=Default_test$default)
+```
+It depends on how you split the model, but it doesn't seem to change the test error that much. In other words, the student variable do not leads to a reduction in the test error rate.
+
+
+
+# 2.
+a)
+```{r}
+set.seed(1)
+glm(default~income+balance,data=Default,family='binomial') %>% summary()
+```
+se for income coef=4.985e-06.
+se for balance coef=2.274e-04.
+
+b)
+```{r}
+boot.fn<-function(data=Default,index){
+  glm(default~income+balance,data=Default, subset=index, family='binomial')$coef[-1]
+}
+```
+
+c)
+```{r}
+boot(Default, boot.fn, 100)
+```
+
+d)
+Obtained standard errors by two methods are quite similar.
+
+
+# 3.
+```{r}
+library(tidyverse)
+library(purrr)
+library(pdftools)
+library(dslabs)
+library(lubridate)
+
+fn <- system.file("extdata", "RD-Mortality-Report_2015-18-180531.pdf",
+                  package="dslabs")
+dat <- map_df(str_split(pdf_text(fn), "\n"), function(s){
+  s <- str_trim(s)
+  header_index <- str_which(s, "2015")[1]
+  tmp <- str_split(s[header_index], "\\s+", simplify = TRUE)
+  month <- tmp[1]
+  header <- tmp[-1]
+  tail_index  <- str_which(s, "Total")
+  n <- str_count(s, "\\d+")
+  out <- c(1:header_index, which(n == 1), 
+           which(n >= 28), tail_index:length(s))
+  s[-out] %>%  str_remove_all("[^\\d\\s]") %>% str_trim() %>%
+    str_split_fixed("\\s+", n = 6) %>% .[,1:5] %>% as_tibble() %>% 
+    setNames(c("day", header)) %>%
+    mutate(month = month, day = as.numeric(day)) %>%
+    gather(year, deaths, -c(day, month)) %>%
+    mutate(deaths = as.numeric(deaths))
+}) %>%
+  mutate(month = recode(month, 
+                        "JAN" = 1, "FEB" = 2, "MAR" = 3, 
+                        "APR" = 4, "MAY" = 5, "JUN" = 6, 
+                        "JUL" = 7, "AGO" = 8, "SEP" = 9, 
+                        "OCT" = 10, "NOV" = 11, "DEC" = 12)) %>%
+  mutate(date = make_date(year, month, day)) %>%
+  filter(date <= "2018-05-01")
+```
+
+```{r}
+#1.
+glimpse(dat)
+total<-as.numeric(dat$date) %>% range() %>% diff()
+span<-61/total
+fit<-loess(deaths~as.numeric(date),data=dat,span=span,degree=1)
+dat<-dat[!is.na(dat$deaths),]
+dat %>% mutate(smooth=fit$fitted) %>%
+  ggplot(aes(as.numeric(date),deaths))+
+  geom_point(alpha=.5)+
+  geom_line(aes(as.numeric(date),smooth),col='red',size=1)
+
+
+#2.
+dat %>% mutate(smooth=predict(fit,as.numeric(dat$date))) %>%
+  ggplot(aes(yday(date),deaths))+geom_point(alpha=.5)+
+  geom_line(aes(yday(date),smooth,col=year),size=1)
+
+```
+
+
+# 4.
+```{r}
+set.seed(1993)
+data("tissue_gene_expression")
+tissues <- c("cerebellum", "hippocampus")
+ind <- which(tissue_gene_expression$y %in% tissues)
+y <- droplevels(tissue_gene_expression$y[ind])
+x <- tissue_gene_expression$x[ind, ]
+x <- x[, sample(ncol(x), 10)]
+```
+
+```{r}
+#1.
+fit<-train(x,y,method='lda')
+fit
+
+#2.
+dat<-t(fit$final$means)
+dat
+dat %>% as_tibble() %>% 
+  mutate(label=as.factor(rownames(dat))) %>%
+  ggplot(aes(cerebellum,hippocampus,col=label,label=label))+
+  geom_point()+geom_text()+theme(legend.position="none") 
+#VOPP1 & PPME1 appear to be driving the algorithm
+
+
+#3.
+fit2<-train(x,y,method='qda')
+fit2#lower accuracy than LDA
+
+#4.
+
+dat2<-t(fit2$final$means)
+dat2
+dat2 %>% as_tibble() %>%
+  mutate(label=as.factor(rownames(dat))) %>%
+  ggplot(aes(cerebellum,hippocampus,col=label,label=label))+
+  geom_point()+geom_text()+theme(legend.position="none") 
+#VOPP1 & PPME1 appear to be driving the algorithm
+```
+
+
+```

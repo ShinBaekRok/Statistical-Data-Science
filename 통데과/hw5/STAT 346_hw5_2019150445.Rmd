@@ -1,0 +1,158 @@
+---
+title: "HW5"
+author: "2019150445/Shin Baek Rok"
+date: '2020 12 4 '
+output: pdf_document
+---
+```{r}
+library(tidyverse)
+library(stringr)
+```
+# 2.
+
+### a)
+
+##### 1)
+Only one backslash: Escape the next character in R strings.
+Two backslash: Escape the next character in R regex.
+Three backslash: First two backslash means just backslash in regex, and third backslash escapes the next character.
+
+##### 2)
+ \"\'\\\\  will work since first backslash works as escape symbol to escape ', similarly second backslash works as escape symbol to escape ", and last four backslashes indicate just one backslash.
+ 
+##### 3)
+In regex, dot means any character. To match the character '.', we have to use \. . Thus \..\..\.. means dot,any character,dot,any character,dot,any character. For example, .x.y.z 
+
+
+### b)
+
+##### 1
+```{r}
+#1.
+'^[aeiouAEIOU]'
+#2.
+'[^aeiouAEIOU]'
+#3.
+'[^e]ed$'
+#4.
+'(ing|ise)$'
+```
+##### 2)
+```{r}
+str_subset(words, "(cei|[^c]ie)")
+str_subset(words, "[^c]ei")#exception
+```
+
+##### 3)
+```{r}
+str_subset(words,'qu')
+str_subset(words,'q[^u]') #None
+```
+
+##### 4)
+For example, word summarise is the British English definition of summarize. We can match this figure by 'ise$'
+
+##### 5)
+'^010\\-?\\d{4}\\-?\\d{4}$' will work well.
+```{r}
+s<-c('010-7173-2932','010-234-gsd9','010-3232-233','010-23232-2333','01017382928')
+str_subset(s,'^010\\-?\\d{4}\\-?\\d{4}$')
+```
+
+
+### c)
+
+##### 1)
+
+? means 0 or 1, that is {0,1}
++ means 1 or more, that is {1,}
+* means 0 or more, that is {0,}
+
+##### 2)
+```{r}
+# 1. ^.*$ will match any string since . means any character and * means 0 or more.
+
+# 2. '\\{.+\\}' will match at least one character that is enclosed in parentheses
+
+# 3. \d{4}-\d{2}-\d{2} will match 0000-00-00 where 0 can be replaced in 0 to 9
+
+# 4. "\\\\{4}" will match \\\\\\\\ since \\ means \ and {4} means repeat 4 times.
+```
+
+
+### d)
+
+##### 1)
+
+1.
+```{r}
+pattern<-"^x|x$"
+str_subset(words,pattern)
+#or
+words[str_detect(words,pattern)]
+```
+
+2.
+```{r}
+pattern<-"^[aeiouAEIOU]|[^aeiouAEIOU]$"
+str_subset(words,pattern) %>% head()
+```
+
+3.
+```{r}
+pattern<-"([aeiouAEIOU])"
+str_subset(words,pattern) %>% str_replace_all("[aeiouAEIOU]","") %>% str_subset('[aeiouAEIOU]') #None
+
+```
+
+
+# 3.
+```{r}
+library(gutenbergr)
+```
+
+### 1)
+```{r}
+x<-gutenberg_metadata
+x$gutenberg_id[x$title %>% str_detect('Pride and Prejudice') ] %>% na.omit() %>% .[1:6]
+```
+
+### 2)
+```{r}
+gutenberg_works(languages='en')$gutenberg_id[gutenberg_works(languages='en')$title %>% str_detect('^Pride and Prejudice$')]
+```
+
+### 3)
+```{r}
+book<-gutenberg_download(1342)
+```
+
+### 4)
+```{r}
+library(tidytext)
+words<-book %>% unnest_tokens(word,text)
+words %>% head()
+```
+
+### 5)
+```{r}
+words<-words %>% mutate(location=1:nrow(words))
+words %>% head()
+```
+
+### 6)
+```{r}
+words<-words %>% anti_join(stop_words,by='word')
+words %>% head()
+```
+
+### 7)
+```{r}
+words<-words %>% inner_join(get_sentiments('afinn'),by='word')
+words %>% head()
+```
+
+### 8)
+```{r}
+words %>% ggplot(aes(location,value))+geom_point(size=.5)+geom_smooth()
+```

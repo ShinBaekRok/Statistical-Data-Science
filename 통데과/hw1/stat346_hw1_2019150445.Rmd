@@ -1,0 +1,197 @@
+---
+title: "stat346_hw1_2019150445"
+author: "2019150445/ShinBaekRok"
+date: '2020 9 17 '
+output: pdf_document
+---
+
+# 1.
+
+
+  (a)
+```{r}
+library(ISLR)
+data(College)
+summary(College)
+```
+
+
+  (b)
+```{r}
+pairs(College[,1:10])
+```
+
+
+  (c)
+```{r}
+attach(College)#To use variables as independent data
+plot(Outstate~Private, xlab='Private College', ylab='Outstate')
+```
+
+
+  (d)
+```{r}
+Elite<-rep("No",nrow(College))
+Elite[Top10perc>50]="Yes"
+Elite<-as.factor(Elite)
+College<-data.frame(College,Elite)
+summary(Elite)
+plot(Outstate~Elite,xlab="Elite College",ylab="Outstate")
+```
+
+
+  (e)
+```{r}
+par(mfrow=c(2,2))
+hist(Top10perc, breaks=5)
+hist(Top10perc, breaks=10)
+hist(Top10perc, breaks=15)
+hist(Top10perc, breaks=20)
+```
+
+
+  (f)
+
+### 1.
+```{r}
+summary(College)
+```
+
+We can see the errors in the summary since there are colleges such that Grad.Rate is over 100 & same for the PhD.(Rate cannot exceed 100)
+
+
+Let's figure out the error rows.
+```{r}
+library(dplyr) #To use filter func
+filter(College,Grad.Rate>100) #To find out the college whose Graduation rate is over 100
+filter(College,PhD>100) #To find out the college whose PhD is over 100
+```
+
+
+### 2.
+```{r}
+plot(P.Undergrad)
+```
+
+If we look at this plot, we can find an outlier.
+Let's find it.
+```{r}
+College[which.max(P.Undergrad),]
+```
+
+
+### 3.
+```{r}
+plot(Apps)
+```
+
+Again, we can find an outlier.
+Let's find it.
+```{r}
+College[which.max(Apps),]
+```
+
+
+### 4.
+```{r}
+plot(F.Undergrad~Enroll)
+```
+
+We can easily find an correlation between enroll and F.Undergrad.
+
+
+
+# 2
+
+
+  (a)
+
+```{r}
+library(MASS)
+data(Boston)
+dim(Boston) #To find numbers of rows and columns
+```
+There are 506 rows and 14 columns.
+
+```{r}
+summary(Boston)
+```
+The rows represent observation of suburbs in Boston Area. The columns presents the measures of the Census Variables.
+
+
+  (b)
+
+```{r}
+pairs(Boston)
+```
+It seems like there is strong negative relationship between lstat&medv. Also in rm&lstat.
+And also, it seems like crime rates are correlated with age, and distance.
+
+
+  (c)
+
+```{r}
+attach(Boston)
+plot(crim~age)
+```
+When house age increases, crime rates also increases.
+
+
+```{r}
+plot(crim~dis)
+```
+When distance to workcenter decreases, crim rates increases.
+
+```{r}
+plot(crim~tax)
+```
+At a certain high level of tax, crime happens a lot.
+
+
+  (d)
+  
+```{r}
+hist(crim, breaks=30)
+```
+Most suburbs have low crime rates, also histogram of crime rates is right-skewed.
+```{r}
+hist(tax, breaks=30)
+```
+As you can see in the histogram above, some suburbs are concentrated in certain tax rates. Also, suburbs are divided in two groups, suburbs paying less taxes and suburbs paying more taxes.
+```{r}
+hist(ptratio,breaks=30)
+```
+There is no clear outliers for ptratio.
+
+
+  (e)
+The chas variable is 1 if it is located at the boundary of the Charles River and if it is not, returns 0.
+```{r}
+Boston %>% filter(chas==1) %>%nrow()
+```
+There are 35 suburbs bound the Charles river.
+
+
+  (f)
+```{r}
+median(ptratio)
+```
+Median of pupil-teacher ratio among the towns is 19.05
+
+
+  (g)
+```{r}
+Boston %>% filter(medv==min(medv))
+summary(Boston)#To compare with suburbs that have mininum value of medv.
+```
+There are two suburbs that have min medv.
+
+Two suburbs have high crime rates above q3. And also for lstat, indus, nox, tax, ptratio, they are above or equal to q3. 
+
+we can find the age and rad are maximum value. 
+
+Lower percentiles for zn, rm, dis. 
+
+Chas=0 means they are not near the Charles river.
+
+And black differs significantly between two suburbs.

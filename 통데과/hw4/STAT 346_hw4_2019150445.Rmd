@@ -1,0 +1,194 @@
+---
+title: "HW4"
+author: "2019150445/Shin Baek Rok"
+date: '2020 11 20 '
+output: pdf_document
+---
+```{r setup, include=FALSE}
+library(tidyverse)
+library(lubridate)
+library(mosaic)
+```
+
+
+# 1.
+```{r}
+x<-data.frame(ID=c(1,2,3,4),grp=c('A','A','B','B'),
+              sex=c('F','M','F','M'),meanL=c(0.22,0.47,0.33,0.55),
+              sdL=c(0.11,0.33,0.11,0.31),meanR=c(0.34,0.57,0.40,0.65),
+              sdR=c(0.08,0.33,0.07,0.27))
+
+x[-1] %>% gather(key=key, value=value, -c(1,2)) %>%
+  unite(key,sex,key,sep='.') %>% spread(key,value) %>% 
+  rename(ID=grp) %>% mutate(ID=c(1,2)) %>% knitr::kable()
+
+```
+# 2.
+### a)
+```{r}
+Marriage %>% filter(year(dob)>2000) %>% select(dob) %>% arrange(dob) %>% head()
+```
+Of the years larger than 2000, the closest year to 2000 is 2024 and we are in 2020. So all years after 2000 are all inappropriate values.
+
+### b)
+```{r}
+
+safe.ifelse <- function(cond, yes, no) structure(ifelse(cond, yes, no), class = class(yes))
+#ifelse function can make errors when we are dealing with date.
+
+Marriage %>% 
+  mutate(dob=safe.ifelse(dob>'2020-01-01',ymd(paste(year(dob)-100,month(dob),day(dob))),dob)) %>%
+  select(dob) %>% arrange(dob) %>% head(10)
+```
+
+
+# 3.
+```{r}
+library(readxl)
+data <- read_excel("C:/Users/admin/Downloads/China-Global-Investment-Tracker-2020-Spring-FINAL.xlsx",skip=5)
+
+# Change column names
+colnames(data) <- data %>% colnames() %>%
+  str_replace_all(" ","_") %>% str_to_lower()
+
+glimpse(data)
+```
+
+
+### a)
+```{r}
+data %>% select(country,region) %>% group_by(country) %>%
+  summarize(region=n_distinct(region)) %>% head(5)
+
+data %>% select(country,region) %>% group_by(country) %>%
+  summarize(region=n_distinct(region)) %>% 
+  filter(region>=2|region==0) 
+#0 rows(Every country is only listed as belonging to a single region)
+```
+
+
+### b)
+```{r}
+
+table<-data %>% group_by(region, sector) %>% summarize(sum=sum(quantity_in_millions)) %>%
+  mutate(prop=sum/sum(sum)) %>% select(-sum) %>% spread(region,prop)
+
+table[is.na(table)]<-0 #NA means zero
+
+colnames(table)<-c('sec','NAf','Aus','EAs','Eur','NAm','SAm','SSAf','USA','WAs')
+#change column names
+
+table[,-1]<-round(table[,-1],2) #round
+table
+
+
+apply(table[,-1],1,mean)
+apply(table[,-1],1,mean) %>% max() 
+#Energy sector commonly receives the great share of investment.
+#But in USA, Real estate receives great share of investment.
+
+```
+
+
+### c)
+```{r}
+summary<-data %>% group_by(sector) %>%
+  summarize(mean=mean(quantity_in_millions),sd=sd(quantity_in_millions)) %>% 
+  arrange(mean)
+summary
+
+data %>% group_by(sector) %>%
+  summarize(mean=mean(log(quantity_in_millions)),sd=sd(log(quantity_in_millions))) %>% 
+  arrange(mean)
+
+cor(summary$mean,summary$sd)
+qplot(x=mean,y=sd,data=summary)
+#There is high positive correlation between mean&sd(When mean increases, sd also increases.)
+#Agriculture sector has high sd for its mean.
+
+```
+
+
+
+### d)
+```{r}
+sec_year<-data %>% group_by(sector, year) %>% 
+  summarize(total=sum(quantity_in_millions)) %>% spread(sector, total) 
+sec_year<-sec_year %>% replace(is.na(sec_year),0)
+sec_year
+
+
+for_plot<-data %>% group_by(sector, year) %>%
+  summarize(total=sum(quantity_in_millions)) 
+for_plot<-for_plot %>% replace(is.na(for_plot),0)
+
+for_plot %>% filter(year %in% 2005:2012) %>% 
+  ggplot() +geom_line(aes(x=year, y=total, col=sector))+
+  facet_wrap(.~sector)+theme(axis.text.x = element_text(angle = 90))
+#Energy sector contributed the most to investment growth from 2005-2012
+
+```
+
+```{r}
+for_plot %>% filter(year %in% 2013:2015) %>% 
+  ggplot() +geom_line(aes(x=factor(year), y=total, col=sector,group=sector))+
+  facet_wrap(.~sector)+theme(axis.text.x = element_text(angle = 90))
+#Energy contributed the most to investment.Also Finance&Transport&Entertainment has growth.
+
+```
+
+
+
+# 4.
+
+
+### a)
+```{r}
+mort<-read_csv("C:/indicatordeadkids35.csv")
+mort<-mort %>% rename(country=X1)
+year<-colnames(mort)[-1] %>% as.integer()
+year %>% head()
+year %>% class()
+```
+
+
+### b)
+```{r}
+long<-mort %>% gather(key='year',value='mortality',-1)
+long$year<-as.numeric(long$year)
+long %>% glimpse()
+```
+
+
+### c)
+```{r}
+pop<-read_tsv('http://johnmuschelli.com/intro_to_r/data/country_pop.txt')
+pop<-pop %>% rename(country=2, percent=5)
+pop %>% glimpse()
+```
+
+
+### d)
+```{r}
+pop_levels<-pop %>% arrange(-Population) %>% select(country)
+long<-long %>% mutate(sorted=factor(country, levels=pop_levels$country))
+long %>% head()
+```
+
+### e)
+```{r}
+long_sub<-long %>% filter(year>=1975 & year<=2010) %>% 
+  filter(sorted %in% c("Venezuela", "Bahrain", "Estonia",
+                       "Iran", "Thailand", "Chile", 
+                       "Western Sahara", "Azerbaijan", "Argentina", "Haiti")) %>% 
+  filter(!is.na(mortality))
+head(long_sub)
+```
+
+
+### f)
+```{r}
+qplot(x=year,y=mortality,data=long_sub,col=sorted,geom='line')
+
+long_sub %>% ggplot()+geom_line(aes(year,mortality,col=sorted))
+```

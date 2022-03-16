@@ -1,0 +1,294 @@
+---
+title: "STAT346_hw2_2019150445"
+author: "2019150445/ShinBaekRok"
+date: '2020 10 2 '
+output: pdf_document
+---
+
+# 1.
+```{r}
+library(gapminder)
+data(gapminder)
+library(dplyr)
+```
+
+
+
+  a)
+```{r}
+gapminder %>% group_by(continent) %>% summarize(n_distinct(country))
+```
+
+
+
+  b)
+```{r}
+gapminder %>% filter(continent=='Europe',year==1997) %>%
+  arrange(gdpPercap) %>% head(n=1) %>% select(country) 
+gapminder %>% filter(continent=='Europe',year==2007) %>% 
+  arrange(gdpPercap) %>% head(n=1) %>% select(country)
+```
+
+
+
+  c)
+```{r}
+gapminder %>% filter(year%in% 1980:1989) %>% 
+  group_by(continent) %>% summarize(mean(lifeExp))
+```
+
+
+
+  d)
+```{r}
+gapminder %>% mutate(GDP=gdpPercap*pop) %>% 
+  group_by(country) %>% summarize(totalGDP=sum(GDP))%>%
+  arrange(-totalGDP) %>% head(n=5)
+```
+
+
+
+  e)
+```{r}
+gapminder %>% filter(lifeExp>=80) %>% select(country,lifeExp,year)
+```
+
+
+
+  f)
+```{r}
+gapminder %>% group_by(country) %>% summarize(corr=cor(lifeExp,gdpPercap))%>%
+  arrange(-abs(corr)) %>% head(10)
+```
+
+
+
+  g)
+```{r}
+gapminder %>% filter(continent!='Asia') %>% group_by(continent, year) %>%
+  summarize(avg=mean(pop)) %>% arrange(-avg) 
+```
+
+
+
+  h)
+```{r}
+gapminder %>% group_by(country) %>% 
+  summarize(sd=sd(pop)) %>% arrange(sd) %>% head(3)
+```
+
+
+
+
+
+
+
+
+# 2.
+```{r}
+library(nycflights13)
+library(ggplot2) #To use ggplot package
+data(flights)
+data(planes)
+data(weather)
+```
+
+
+
+  a)
+```{r}
+#dep_time=NA means that plane does not depart(Plane has cancelled).
+x<-flights %>% group_by(month) %>%
+  summarize(total=n(),frequency=sum(is.na(dep_time)),proportion=frequency/total)
+x %>% head()
+x %>% ggplot(aes(x=month,y=proportion))+geom_point()+geom_line()
+```
+Month 2(i.e.Febuary) is the highest. Month 10(i.e. October) is the lowest.
+As we can see, Summer & Winter has high proportion of cancelled flights. We can interpret this as an impact of snow and storm.
+
+
+
+  b)
+```{r}
+flights %>% filter(year==2013, !is.na(tailnum)) %>%
+group_by(tailnum) %>%summarize(freq=n()) %>%
+arrange(-freq)%>%head(1)
+```
+
+```{r}
+library(lubridate) #To calculate each week.
+flights$week<-make_date(flights$year,flights$month,flights$day) %>% week()#Add week column to flights .
+
+#Next, filter tailnum='N725MQ' that traveled the most times from NYC in 2013 
+#and plot the number of trips per week over the year 2013.
+flights %>% filter(year==2013 & tailnum=='N725MQ') %>% group_by(week) %>%
+  summarize(total_flight=n()) %>%
+  ggplot(aes(x=week,y=total_flight))+geom_point()+geom_line()
+
+```
+
+
+
+  c)
+```{r}
+planes %>% select(tailnum, old=year) %>%
+  inner_join(flights,by='tailnum') %>% arrange(old) %>% head(1)
+
+sum(unique(flights$tailnum) %in% unique(planes$tailnum))
+```
+
+
+
+  d)
+```{r}
+#planes$year indicates the year that plane has manufactured.
+planes$year %>% is.na() %>% sum()
+
+
+
+table(planes$manufacturer) %>% data.frame() %>% arrange(-Freq) %>% head(5)
+
+
+
+planes<-planes %>% count(manufacturer,year) %>% 
+  mutate(manufacturer=ifelse(n<7,'Other',manufacturer))
+# When n<7, manufacturer is classfied as Other.
+
+
+planes %>% ggplot(aes(x=year,y=n,col=manufacturer)) + geom_line()
+
+```
+
+Since 1980's, Boeing is higher in almost all years than any other company.
+
+
+
+
+  e)
+```{r}
+
+weather %>% filter(year==2013 & month==7) %>% ggplot(aes(temp))+geom_histogram(col='black')
+#Temp distribution is Slightly skewed to the right.
+
+weather %>% ggplot(aes(y=wind_speed)) + geom_boxplot()
+# There are some outliers, let's see when wind_speed>1000.
+
+weather %>% filter(wind_speed>1000)
+
+
+
+
+weather %>% ggplot(aes(dewp, humid)) +geom_point()+geom_smooth(fill=NA)
+#There seem to be a positive relationship between dewp & humid.
+
+weather %>% ggplot(aes(precip,visib)) +geom_point()+geom_smooth(fill=NA)
+#There seem to be there isn't any relationship between precip & visib
+```
+
+
+
+
+  f)
+```{r}
+weather1<-weather %>% filter(year==2013 & precip>0)
+lubridate::make_date(weather1$year, weather1$month, weather1$day) %>% n_distinct()
+
+weather %>% group_by(month) %>% summarize(visib_avg=mean(visib)) %>%
+  ggplot(aes(month, visib_avg))+geom_line()+geom_point() 
+```
+Month 12, Month 1,2 are lowest. That means in winter season, visibility is low.
+
+
+
+```{r}
+weather<-weather %>% mutate(date=make_date(weather$year,weather$month,weather$day))
+
+weather$wday<-weather$date %>% wday()
+weather %>% group_by(wday) %>% 
+  summarize(visib_avg=mean(visib)) %>% ggplot(aes(wday,visib_avg))+geom_line()+geom_point()
+```
+
+It seems like there is some difference between the day of week, but its lowest average is 9.15 & its highest average is 9.49.(Not that differ)
+
+
+
+
+
+
+
+# 3.
+```{r}
+library(ggplot2)
+data(diamonds)
+```
+
+
+  a)
+```{r}
+hist(diamonds$carat,col='steelblue')
+```
+
+
+  b)
+```{r}
+qplot(diamonds$depth)
+```
+
+
+
+  c)
+```{r}
+qplot(data=diamonds, x=cut, y=price, geom='violin', fill=cut)
+```
+
+
+
+
+# 4.
+```{r}
+library(MASS)
+Cars93<-as_tibble(Cars93)
+```
+
+
+
+  a)
+```{r}
+Cars93 %>% ggplot(aes(MPG.highway,Price,size=Horsepower))+geom_point()
+```
+
+
+
+  b)
+```{r}
+Cars93 %>% ggplot(aes(MPG.highway,Price,size=Horsepower,col=Origin))+
+  geom_point()
+```
+
+
+
+  c)
+```{r}
+Cars93 %>% ggplot(aes(MPG.highway,Price,size=Horsepower))+
+  geom_point()+stat_smooth()
+```
+
+
+
+
+  d)
+```{r}
+Cars93 %>% ggplot(aes(MPG.highway,Price,col=Origin))+
+  geom_point()+facet_grid(.~Origin)
+```
+
+
+
+
+
+  e)
+```{r}
+Cars93 %>% ggplot(aes(MPG.highway,Price, col=Origin))+
+  geom_point()+geom_smooth(method='lm',fill=NA)+facet_grid(.~Origin)
+
+```
